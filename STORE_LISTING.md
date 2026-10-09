@@ -25,3 +25,6 @@ your PDF is sent only to Pangram; nothing is sent anywhere else and no analytics
 **Single purpose:** Highlight AI-written text in the compiled PDF of an Overleaf project.
 **Data usage:** Website content (PDF text) is transmitted to Pangram for the extension's core function; not sold,
 not used for unrelated purposes, not for creditworthiness.
+
+**Privacy policy URL:** https://github.com/iamjanvijay/overleaf-ai-checker/blob/main/PRIVACY.md
+**Homepage URL:** https://github.com/iamjanvijay/overleaf-ai-checker

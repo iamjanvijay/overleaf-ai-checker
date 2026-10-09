@@ -1,5 +1,7 @@
 # Overleaf AI Checker (Chrome extension)
 
+Repository: https://github.com/iamjanvijay/overleaf-ai-checker · Privacy policy: https://github.com/iamjanvijay/overleaf-ai-checker/blob/main/PRIVACY.md
+
 Adds an **🤖 AI check** button to Overleaf's PDF toolbar. It scores the currently compiled PDF with
 [Pangram](https://www.pangram.com) and paints every word on a green (human) → red (AI) scale, with a summary
 strip, hover details, show/hide, and a **download of the PDF with the highlights baked in**.
@@ -39,7 +41,7 @@ Permissions: `storage` (API key + option), `offscreen` (pdf.js worker), host acc
    the 128px icon from `icons/`. Description: see `STORE_LISTING.md`.
 5. Privacy tab: single purpose = "Highlight AI-written text in the compiled PDF of an Overleaf project".
    Permission justifications are in `STORE_LISTING.md`. Declare that the extension sends document text to
-   Pangram's API (user-provided key) and nothing else; link the privacy policy (`PRIVACY.md`, host it on a public URL).
+   Pangram's API (user-provided key) and nothing else; link the privacy policy: https://github.com/iamjanvijay/overleaf-ai-checker/blob/main/PRIVACY.md
 6. Submit for review. Reviews typically take 1–3 business days; host-permission extensions get a closer look,
    so keep the justification text precise.
 
