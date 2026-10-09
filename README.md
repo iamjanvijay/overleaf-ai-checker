@@ -38,6 +38,13 @@ PDF) and `text.external-api.pangram.com` (scoring). No other sites, no analytics
 3. Developer Dashboard → the item → Package → upload the zip → Submit for review.
    Listing text and justifications: `STORE_LISTING.md`. Images: `store-assets/`.
 
+## What text is sent to Pangram
+The PDF text is cleaned before scoring so the detector sees natural prose, not layout artefacts: visual lines are
+re-joined into paragraphs (blank line only at real paragraph breaks), words hyphenated across a line break are
+re-joined, and equations, tables of numbers, page numbers and running headers/footers are left out (they are
+simply not highlighted). Pages are concatenated in order; inputs over ~12k characters are split at paragraph
+boundaries into separate Pangram requests.
+
 ## Notes / limits
 - Word boxes are estimated proportionally within each text run (pdf.js does not expose per-glyph widths).
 - Pangram scores segments (roughly paragraphs); all words in a segment share its color.

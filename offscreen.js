@@ -24,25 +24,68 @@ async function pageCount(pdfUrl) {
   return { pages: pdf.numPages };
 }
 
-/* Per page: text (for scoring) and positioned text runs in PDF points, top-left origin, scale 1. */
+/* Per page: clean prose text (for scoring) plus positioned text runs in PDF points (top-left origin, scale 1).
+   Cleaning, so Pangram sees natural paragraphs rather than PDF layout artefacts:
+   - visual lines are re-joined into paragraphs (blank line only at real paragraph breaks: large vertical gap,
+     first-line indent, or column/page change);
+   - words hyphenated across a line break are re-joined ("tran-" + "script" -> "transcript");
+   - equations, tables of numbers, page numbers and running headers/footers are left out of the text
+     (they stay unhighlighted; their items get start = end = -1). */
 async function extract(pdfUrl) {
   const pdf = await pdfjsLib.getDocument({ data: await fetchPdf(pdfUrl) }).promise;
   const pages = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i); const vp = page.getViewport({ scale: 1 });
-    const tc = await page.getTextContent(); const items = []; let text = '';
+    const tc = await page.getTextContent(); const its = [];
     for (const it of tc.items) {
       if (!it.str) continue;
       const t = pdfjsLib.Util.transform(vp.transform, it.transform);
-      const h = Math.hypot(t[2], t[3]) || it.height;
-      if (it.str.trim()) {
-        if (text && !/\s$/.test(text)) text += ' ';
-        const start = text.length; text += it.str;
-        items.push({ str: it.str, x: t[4], y: t[5], w: it.width, h, start, end: text.length });
-      }
-      if (it.hasEOL) text += '\n';
+      its.push({ str: it.str, x: t[4], y: t[5], w: it.width, h: Math.hypot(t[2], t[3]) || it.height, eol: !!it.hasEOL, start: -1, end: -1 });
     }
-    pages.push({ w: vp.width, h: vp.height, text, items });
+    const H = vp.height;
+    const vocab = new Set(); for (const it of its) for (const w of it.str.replace(/[A-Za-z]+-\s*$/, '').toLowerCase().match(/[a-z]{3,}/g) || []) vocab.add(w);   // fragments before a line-end hyphen don't count
+    const isMathish = str => { const ns = str.replace(/\s/g, ''); if (!ns) return true; const letters = (str.match(/[A-Za-z]/g) || []).length; const words = (str.match(/[A-Za-z]{3,}/g) || []).length; return letters / ns.length < 0.45 && words < 2; };
+    for (let k = 0; k < its.length; k++) {
+      const it = its[k]; const ns = it.str.replace(/\s/g, '');
+      const edge = it.y < H * 0.06 || it.y > H * 0.94;
+      const nxt = its[k + 1]; it.eol = it.eol || !nxt || Math.abs(nxt.y - it.y) > (it.h || 10) * 0.5;   // geometric line end too
+      const wholeLine = (k === 0 || its[k - 1].eol) && it.eol;
+      it.skip = !ns || (edge && ns.length < 60) || (isMathish(it.str) && (ns.length >= 10 || wholeLine));   // short inline numbers are kept
+    }
+    let text = '', pending = null, joinTight = false, lineStartX = null;
+    const nextKept = k => { for (let j = k + 1; j < its.length; j++) if (!its[j].skip) return its[j]; return null; };
+    for (let k = 0; k < its.length; k++) {
+      const it = its[k]; if (it.skip) continue;
+      let str = it.str;
+      if (pending === 'para') { text = text.replace(/\s+$/, '') + '\n\n'; }
+      else if (pending === 'soft') { if (!joinTight && !/\s$/.test(text)) text += ' '; }
+      else if (text && !/\s$/.test(text) && !/^\s/.test(str)) text += ' ';
+      if (lineStartX === null || pending) lineStartX = it.x;
+      pending = null; joinTight = false;
+      it.start = text.length;
+      if (it.eol) {
+        const nx = nextKept(k);
+        if (nx && /[A-Za-z]-$/.test(str) && /^[a-z]/.test(nx.str)) {
+          const frag = (str.match(/([A-Za-z]+)-$/) || [])[1] || '';
+          joinTight = true;
+          if (!(frag.length >= 3 && vocab.has(frag.toLowerCase()))) str = str.slice(0, -1);   // "tran-"+"script" -> "transcript"; "graph-"+"agreement" keeps its hyphen
+        }
+      }
+      text += str; it.end = text.length;
+      if (it.eol) {
+        const nx = nextKept(k);
+        if (!nx) pending = 'para';
+        else {
+          const gap = nx.y - it.y, indent = nx.x - lineStartX, h = it.h || 10;
+          const sizeChange = Math.abs(nx.h - it.h) > h * 0.15;                 // heading <-> body text
+          const columnOrPageJump = gap < -h * 0.5;
+          const newPara = sizeChange || gap > h * 1.65 || (indent > h * 0.8 && indent < h * 4) || (/[.!?:]["')\]]?$/.test(str) && columnOrPageJump && indent > h * 4);
+          pending = newPara ? 'para' : 'soft';
+          if (pending === 'para') joinTight = false;
+        }
+      }
+    }
+    pages.push({ w: vp.width, h: vp.height, text: text.trim(), items: its.filter(it => !it.skip).map(({ str, x, y, w, h, start, end }) => ({ str, x, y, w, h, start, end })) });
   }
   return { pages };
 }
