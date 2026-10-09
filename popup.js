@@ -5,6 +5,3 @@ document.getElementById('save').onclick = async () => {
   await chrome.storage.sync.set({ pangramKey: v });
   status.textContent = v ? 'Key saved ✓' : 'Key removed.'; status.className = v ? 'ok' : '';
 };
-const auto = document.getElementById('auto');
-chrome.storage.sync.get('autoRecheck').then(({ autoRecheck }) => { auto.checked = autoRecheck !== false; });
-auto.onchange = () => chrome.storage.sync.set({ autoRecheck: auto.checked });

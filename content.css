@@ -1,17 +1,17 @@
-.pg-btn { gap: 4px; white-space: nowrap; }
-.pg-btn .pg-ico { font-size: 14px; }
-.pg-btn.pg-busy { opacity: .6; cursor: progress; }
-.pg-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
-.pg-overlay .pg-w { position: absolute; border-radius: 2px; mix-blend-mode: multiply; }
-.pg-tip { position: fixed; z-index: 100000; pointer-events: none; color: #111; font: 700 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 4px 8px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,.4); white-space: nowrap; }
-#pg-strip { position: absolute; top: 0; left: 0; right: 0; z-index: 20; display: flex; align-items: center; gap: 8px; padding: 3px 10px; height: 26px; white-space: nowrap; overflow: hidden; background: #2a2340; color: #e8ecf1; font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
-#pg-strip .pg-lbl2 { color: #9aa5b5; }
-#pg-strip .pg-hum { color: hsl(120,70%,60%); } #pg-strip .pg-ai { color: hsl(0,80%,65%); }
-#pg-strip .pg-bar { width: 90px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, hsl(120,80%,45%), hsl(60,90%,50%), hsl(0,85%,50%)); }
-#pg-strip small { color: #9aa5b5; overflow: hidden; text-overflow: ellipsis; }
-#pg-strip b { white-space: nowrap; }
-#pg-strip .pg-stale { color: #f3c247; margin-left: 6px; }
-#pg-strip .pg-x { margin-left: auto; background: none; border: 0; color: #9aa5b5; cursor: pointer; font-size: 12px; }
-#pg-strip .pg-x + .pg-x { margin-left: 0; }
-#pg-strip .pg-x:hover { color: #fff; }
-#pg-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #111; color: #fff; padding: 10px 16px; border-radius: 6px; z-index: 100000; font: 13px -apple-system, sans-serif; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+.oac-btn { gap: 4px; white-space: nowrap; }
+.oac-btn .oac-ico { font-size: 14px; }
+#oac-panel { position: absolute; top: 8px; right: 16px; z-index: 30; width: 300px; background: #1b222c; color: #e8ecf1; border: 1px solid #3b4556; border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.45); padding: 10px 12px 12px; font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+#oac-panel .oac-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; margin-bottom: 8px; }
+#oac-panel .oac-x { background: none; border: 0; color: #9aa5b5; cursor: pointer; font-size: 13px; }
+#oac-panel .oac-x:hover { color: #fff; }
+#oac-panel .oac-row { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+#oac-panel input[type=number] { width: 56px; padding: 3px 6px; border-radius: 4px; border: 1px solid #3b4556; background: #232a35; color: #e8ecf1; font: inherit; }
+#oac-panel .oac-muted { color: #9aa5b5; }
+#oac-panel .oac-legend { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #9aa5b5; margin: 8px 0; }
+#oac-panel .oac-bar { flex: 1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, hsl(120,80%,45%), hsl(60,90%,50%), hsl(0,85%,50%)); }
+#oac-panel .oac-go { width: 100%; background: #138a07; color: #fff; border: 0; border-radius: 4px; padding: 7px 10px; font-weight: 700; cursor: pointer; }
+#oac-panel .oac-go:hover { background: #0f6b05; }
+#oac-panel .oac-go:disabled { opacity: .6; cursor: progress; }
+#oac-panel .oac-status { margin-top: 8px; font-size: 12px; color: #9aa5b5; min-height: 16px; white-space: normal; }
+#oac-panel .oac-status.ok { color: #7fe06f; }
+#oac-panel .oac-status.err { color: #ff8080; }

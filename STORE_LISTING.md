@@ -1,17 +1,17 @@
 # Chrome Web Store listing
 
 **Name:** Overleaf AI Checker
-**Summary (132 chars max):** Color-codes your compiled Overleaf PDF by AI-likelihood (Pangram): green = human, red = AI. Download the highlighted PDF.
+**Summary (132 chars max):** Recompile, pick a page range, and download your Overleaf PDF with AI-written text color-coded by Pangram (green = human, red = AI).
 
 **Description:**
-Overleaf AI Checker adds an "AI check" button to Overleaf's PDF toolbar. One click sends the text of your
-currently compiled PDF to Pangram's AI-detection API (using your own Pangram API key) and paints every word
-on a green-to-red scale: green = human-written, yellow = AI-assisted, red = AI-generated. Hover any word for the
-label, confidence and score. Hide or show the highlights at any time, keep scores across recompiles, and download
-a copy of the PDF with the highlights baked in.
+Overleaf AI Checker adds an "AI check" button to Overleaf's PDF toolbar. Click it, optionally recompile, choose
+a page range, and download a copy of your compiled PDF in which every word on those pages is color-coded by
+Pangram's AI detector: green = human-written, yellow = AI-assisted, red = AI-generated. Pages outside the range are
+left untouched, and a one-line summary (percent AI / AI-assisted / human) is stamped on the first selected page.
 
-Requires a Pangram API key (pangram.com). Your key is stored locally in Chrome's extension storage. The text of
-your PDF is sent only to Pangram; nothing is sent anywhere else and no analytics are collected.
+Nothing is drawn on the Overleaf page itself. Requires a Pangram API key (pangram.com), which you enter once in the
+extension popup and can change at any time. The key is stored locally in Chrome's extension storage. The text of the
+selected pages is sent only to Pangram; nothing is sent anywhere else and no analytics are collected.
 
 **Category:** Productivity · **Language:** English
 
@@ -22,7 +22,7 @@ your PDF is sent only to Pangram; nothing is sent anywhere else and no analytics
 - Host `https://text.external-api.pangram.com/*`: send PDF text for AI-likelihood scoring with the user's key.
 - Remote code: none. All scripts are bundled (pdf.js, pdf-lib).
 
-**Single purpose:** Highlight AI-written text in the compiled PDF of an Overleaf project.
+**Single purpose:** Download a copy of an Overleaf project's compiled PDF with AI-written text highlighted (Pangram).
 **Data usage:** Website content (PDF text) is transmitted to Pangram for the extension's core function; not sold,
 not used for unrelated purposes, not for creditworthiness.
 

@@ -1,89 +1,75 @@
-// Service worker: talks to Pangram, and asks the offscreen document to extract PDF text.
+// Service worker: scores the chosen pages with Pangram and asks the offscreen document to parse/highlight the PDF.
 const PANGRAM_URL = 'https://text.external-api.pangram.com/task';
 const CHUNK = 12000;
-const cache = new Map();   // textHash -> result
+const cache = new Map();   // hash -> scored result
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.target !== 'background') return;
-  if (msg.type === 'analyze') {
-    analyze(msg.pdfUrl, sender.tab?.id).then(sendResponse).catch(e => sendResponse({ error: e.message || String(e) }));
-    return true;   // async
-  }
-  if (msg.type === 'extract') {
-    (async () => { await ensureOffscreen(); return chrome.runtime.sendMessage({ target: 'offscreen', type: 'extract', pdfUrl: msg.pdfUrl }); })()
-      .then(sendResponse).catch(e => sendResponse({ error: e.message || String(e) }));
-    return true;
-  }
-  if (msg.type === 'highlight') {
-    (async () => { await ensureOffscreen(); return chrome.runtime.sendMessage({ target: 'offscreen', type: 'highlight', pdfUrl: msg.pdfUrl, rects: msg.rects }); })()
-      .then(sendResponse).catch(e => sendResponse({ error: e.message || String(e) }));
-    return true;
-  }
-  if (msg.type === 'analyzeText') {
-    analyzeText(msg.text, sender.tab?.id).then(sendResponse).catch(e => sendResponse({ error: e.message || String(e) }));
-    return true;
-  }
+  const tabId = sender.tab?.id;
+  const job = msg.type === 'pageCount' ? pageCount(msg.pdfUrl)
+            : msg.type === 'highlightRange' ? highlightRange(msg.pdfUrl, msg.from, msg.to, tabId)
+            : null;
+  if (!job) return;
+  job.then(sendResponse).catch(e => sendResponse({ error: e.message || String(e) }));
+  return true;   // async response
 });
 
-async function getKey() {
-  const { pangramKey } = await chrome.storage.sync.get('pangramKey');
-  return (pangramKey || '').trim();
-}
+async function getKey() { const { pangramKey } = await chrome.storage.sync.get('pangramKey'); return (pangramKey || '').trim(); }
 
 async function ensureOffscreen() {
-  const has = await chrome.offscreen.hasDocument?.();
-  if (has) return;
+  if (await chrome.offscreen.hasDocument?.()) return;
   try {
-    await chrome.offscreen.createDocument({
-      url: 'offscreen.html',
-      reasons: ['WORKERS'],
-      justification: 'Parse the compiled PDF with pdf.js (needs a Worker and DOM APIs).',
-    });
+    await chrome.offscreen.createDocument({ url: 'offscreen.html', reasons: ['WORKERS'], justification: 'Parse the compiled PDF with pdf.js and write the highlighted copy with pdf-lib.' });
   } catch (e) { if (!String(e).includes('single offscreen')) throw e; }
 }
+const offscreen = async (payload) => { await ensureOffscreen(); const r = await chrome.runtime.sendMessage({ target: 'offscreen', ...payload }); if (!r || r.error) throw new Error(r?.error || 'PDF processing failed'); return r; };
+const progress = (tabId, text) => { if (tabId) chrome.tabs.sendMessage(tabId, { target: 'content', type: 'progress', text }).catch(() => {}); };
 
-function progress(tabId, text) { if (tabId) chrome.tabs.sendMessage(tabId, { target: 'content', type: 'progress', text }).catch(() => {}); }
+async function pageCount(pdfUrl) { const r = await offscreen({ type: 'pageCount', pdfUrl }); return { pages: r.pages }; }
 
-async function analyze(pdfUrl, tabId) {
+async function highlightRange(pdfUrl, from, to, tabId) {
   const key = await getKey();
   if (!key) return { error: 'No Pangram API key. Click the extension icon and paste your key.' };
-  progress(tabId, 'Reading PDF…');
-  await ensureOffscreen();
-  const extracted = await chrome.runtime.sendMessage({ target: 'offscreen', type: 'extract', pdfUrl });
-  if (!extracted || extracted.error) return { error: extracted?.error || 'Could not read the PDF' };
-  const text = extracted.text;
-  if (text.split(/\s+/).length < 15) return { error: 'Not enough text in the PDF to analyze.' };
+  progress(tabId, 'Reading the PDF…');
+  const ex = await offscreen({ type: 'extract', pdfUrl });          // { pages: [{ w, h, text, items:[{str,x,y,w,h,start,end}] }] }
+  const n = ex.pages.length;
+  from = Math.max(1, Math.min(from || 1, n)); to = Math.max(from, Math.min(to || n, n));
+  // Build the text of the selected pages; remember each page's offset in it.
+  let text = ''; const offsets = [];
+  for (let p = from; p <= to; p++) { offsets[p] = text.length; text += ex.pages[p - 1].text + '\n'; }
+  if (text.split(/\s+/).filter(Boolean).length < 15) return { error: `Pages ${from}–${to} contain too little text to analyze.` };
   const h = await sha256(text + '|' + key.slice(-6));
   let scored = cache.get(h);
-  if (!scored) {
-    progress(tabId, 'Scoring with Pangram…');
-    scored = await scoreText(text, key, n => progress(tabId, `Scoring with Pangram… (${n})`));
-    cache.set(h, scored);
+  if (!scored) { scored = await scoreText(text, key, s => progress(tabId, `Scoring with Pangram… ${s}`)); cache.set(h, scored); }
+  // Word boxes (PDF points, top-left origin) for the selected pages only.
+  const wins = scored.windows.slice().sort((a, b) => a.start - b.start);
+  const winAt = pos => { for (const w of wins) if (pos >= w.start && pos < w.end) return w; return null; };
+  const rects = [];
+  for (let p = from; p <= to; p++) {
+    const page = ex.pages[p - 1]; const list = [];
+    for (const it of page.items) {
+      const re = /\S+/g; let m;
+      while ((m = re.exec(it.str))) {
+        const w = winAt(offsets[p] + it.start + m.index); if (!w) continue;
+        const x0 = it.x + it.w * (m.index / it.str.length), x1 = it.x + it.w * ((m.index + m[0].length) / it.str.length);
+        list.push({ x: x0, y: it.y - it.h * 0.85, w: x1 - x0, h: it.h * 1.08, score: w.score });
+      }
+    }
+    rects[p - 1] = list;
   }
-  return { pages: extracted.pages, text, ...scored };
+  progress(tabId, 'Writing the highlighted PDF…');
+  const note = `Pangram AI check (pages ${from}–${to}): ${Math.round(scored.fraction_ai * 100)}% AI · ${Math.round(scored.fraction_ai_assisted * 100)}% AI-assisted · ${Math.round(scored.fraction_human * 100)}% human. Green = human, yellow = AI-assisted, red = AI.`;
+  const out = await offscreen({ type: 'highlight', pdfUrl, rects, note, notePage: from });
+  return { base64: out.base64, from, to, summary: scored };
 }
 
-async function analyzeText(text, tabId) {
-  const key = await getKey();
-  if (!key) return { error: 'No Pangram API key. Click the extension icon and paste your key.' };
-  if (text.split(/\s+/).length < 15) return { error: 'Not enough text in the PDF to analyze.' };
-  const h = await sha256(text + '|' + key.slice(-6));
-  let scored = cache.get(h);
-  if (!scored) { progress(tabId, 'Scoring with Pangram…'); scored = await scoreText(text, key, n => progress(tabId, `Scoring… (${n})`)); cache.set(h, scored); }
-  return { ...scored };
-}
-
-async function sha256(s) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
-  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
-}
+async function sha256(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
 
 async function pangram(method, url, key, body) {
   const r = await fetch(url, { method, headers: { 'x-api-key': key, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
   if (!r.ok) throw new Error(`Pangram HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
   return r.json();
 }
-
 async function scoreChunk(text, key) {
   const { task_id } = await pangram('POST', PANGRAM_URL, key, { text, model: 'pangram-4' });
   const deadline = Date.now() + 300000;
@@ -95,7 +81,6 @@ async function scoreChunk(text, key) {
   }
   throw new Error('Pangram timed out');
 }
-
 function splitChunks(text, limit) {
   const out = []; let pos = 0;
   while (pos < text.length) {
@@ -105,13 +90,12 @@ function splitChunks(text, limit) {
   }
   return out;
 }
-
 async function scoreText(text, key, onProgress) {
   const windows = []; const tot = { ai: 0, assisted: 0, human: 0, words: 0 };
   const chunks = splitChunks(text, CHUNK); let i = 0;
   for (const [offset, chunk] of chunks) {
-    i++; onProgress?.(`chunk ${i}/${chunks.length}`);
-    if (chunk.split(/\s+/).length < 15) continue;
+    i++; onProgress?.(chunks.length > 1 ? `(part ${i}/${chunks.length})` : '');
+    if (chunk.split(/\s+/).filter(Boolean).length < 15) continue;
     const r = await scoreChunk(chunk, key);
     const n = Math.max(1, (r.windows || []).reduce((a, w) => a + (w.word_count || 0), 0));
     tot.ai += (r.fraction_ai || 0) * n; tot.assisted += (r.fraction_ai_assisted || 0) * n; tot.human += (r.fraction_human || 0) * n; tot.words += n;
@@ -123,7 +107,7 @@ async function scoreText(text, key, onProgress) {
       if (label.includes('human') && !label.replace('humanized', '').includes('ai')) score = Math.min(.35, assist);
       else if (label.includes('assist') || label.includes('mixed')) score = .45 + .25 * assist;
       else score = .7 + .3 * conf;
-      windows.push({ start: offset + (w.start_index || 0), end: offset + (w.end_index || 0), label: w.label, confidence: w.confidence, score: +score.toFixed(3), humanized: !!w.is_humanized, words: w.word_count });
+      windows.push({ start: offset + (w.start_index || 0), end: offset + (w.end_index || 0), label: w.label, confidence: w.confidence, score: +score.toFixed(3) });
     }
   }
   const n = Math.max(1, tot.words);

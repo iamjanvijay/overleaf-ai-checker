@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Overleaf AI Checker",
-  "version": "1.0.0",
-  "description": "Color-codes your compiled Overleaf PDF by AI-likelihood with Pangram: green = human, red = AI. Download the highlighted PDF.",
+  "version": "1.1.0",
+  "description": "Recompile, pick a page range, and download your Overleaf PDF with AI-written text color-coded by Pangram (green = human, red = AI).",
   "permissions": [
     "storage",
     "offscreen"
