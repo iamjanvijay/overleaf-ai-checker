@@ -73,7 +73,12 @@ async function highlight(pdfUrl, rects, note, notePage) {
         C: [r, g, b], CA: .55, F: 4, Contents: PDFString.of(text),
         AP: { N: ctx.register(ap) },
       });
-      annots.push(ctx.register(annot));
+      const annotRef = ctx.register(annot);
+      // A small, closed Popup gives viewers (Preview, Acrobat, pdf.js) a compact note window instead of their default large one.
+      const popup = ctx.obj({ Type: 'Annot', Subtype: 'Popup', Rect: [x1, f(y2 + 2), f(x1 + 120), f(y2 + 20)], Parent: annotRef, Open: false, F: 28 });
+      const popupRef = ctx.register(popup);
+      annot.set(PDFName.of('Popup'), popupRef);
+      annots.push(annotRef); annots.push(popupRef);
     }
   }
   if (note && pages[notePage - 1]) {
