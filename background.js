@@ -44,7 +44,7 @@ async function highlightRange(pdfUrl, from, to, tabId) {
   // One highlight per word (PDF points, top-left origin) for the selected pages only. Consecutive words on the
   // same line with the same score are tiled edge-to-edge so the stroke looks continuous, but each word keeps its
   // own annotation (hover shows the word and its Pangram score).
-  const wins = scored.windows.slice().sort((a, b) => a.start - b.start);
+  const wins = sentenceSmooth(text, scored.windows);
   const winAt = pos => { for (const w of wins) if (pos >= w.start && pos < w.end) return w; return null; };
   const rects = [];
   for (let p = from; p <= to; p++) {
@@ -71,6 +71,25 @@ async function highlightRange(pdfUrl, from, to, tabId) {
   const { chromePopups } = await chrome.storage.sync.get('chromePopups');
   const out = await offscreen({ type: 'highlight', pdfUrl, rects, note, notePage: from, popups: !!chromePopups });
   return { base64: out.base64, from, to, summary: scored };
+}
+
+/* Give every sentence one score: the segment that covers most of its characters. Removes single-word colour flips
+   at segment edges. Returns merged, sorted windows. */
+function sentenceSmooth(text, windows) {
+  const wins = windows.slice().sort((a, b) => a.start - b.start);
+  if (!wins.length) return wins;
+  const sentences = []; const re = /[^.!?\n]+(?:[.!?]+["')\]]*|\n+|$)\s*/g; let m;
+  while ((m = re.exec(text)) && m[0]) sentences.push({ start: m.index, end: m.index + m[0].length });
+  const out = [];
+  for (const st of sentences) {
+    let best = null, bestCov = 0;
+    for (const w of wins) { const cov = Math.min(st.end, w.end) - Math.max(st.start, w.start); if (cov > bestCov) { bestCov = cov; best = w; } }
+    if (!best) continue;
+    const last = out[out.length - 1];
+    if (last && last.src === best && last.end >= st.start - 2) last.end = st.end;
+    else out.push({ start: st.start, end: st.end, label: best.label, confidence: best.confidence, score: best.score, src: best });
+  }
+  return out.map(({ src, ...w }) => w);
 }
 
 async function sha256(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
@@ -109,7 +128,13 @@ async function scoreText(text, key, onProgress) {
     const r = await scoreChunk(chunk, key);
     const n = Math.max(1, (r.windows || []).reduce((a, w) => a + (w.word_count || 0), 0));
     tot.ai += (r.fraction_ai || 0) * n; tot.assisted += (r.fraction_ai_assisted || 0) * n; tot.human += (r.fraction_human || 0) * n; tot.words += n;
+    let cursor = 0;
     for (const w of r.windows || []) {
+      // Anchor the segment by its own text (Pangram's indices can drift from our text by a few characters);
+      // fall back to the reported indices when the text is not found verbatim.
+      let s0 = w.start_index || 0, s1 = w.end_index || 0;
+      const wt = (w.text || '').trim();
+      if (wt.length >= 20) { const probe = wt.slice(0, 60); let i = chunk.indexOf(probe, cursor); if (i < 0) i = chunk.indexOf(probe); if (i >= 0) { s0 = i; const j = chunk.indexOf(wt.slice(-40), i); s1 = j >= 0 ? j + wt.slice(-40).length : i + wt.length; cursor = s1; } }
       const label = (w.label || '').toLowerCase();
       const conf = { high: 1, medium: .75, low: .5 }[(w.confidence || '').toLowerCase()] ?? .75;
       const assist = +w.ai_assistance_score || 0;
@@ -117,7 +142,7 @@ async function scoreText(text, key, onProgress) {
       if (label.includes('human') && !label.replace('humanized', '').includes('ai')) score = Math.min(.35, assist);
       else if (label.includes('assist') || label.includes('mixed')) score = .45 + .25 * assist;
       else score = .7 + .3 * conf;
-      windows.push({ start: offset + (w.start_index || 0), end: offset + (w.end_index || 0), label: w.label, confidence: w.confidence, score: +score.toFixed(3) });
+      windows.push({ start: offset + s0, end: offset + s1, label: w.label, confidence: w.confidence, score: +score.toFixed(3) });
     }
   }
   const n = Math.max(1, tot.words);
