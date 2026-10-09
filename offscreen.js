@@ -47,18 +47,33 @@ async function extract(pdfUrl) {
   return { pages };
 }
 
-/* rects: sparse array by page index of [{x, y, w, h, score}] in PDF points (top-left origin). Only those pages get drawn on. */
+/* rects: sparse array by page index of [{x, y, w, h, score, label, confidence}] in PDF points (top-left origin).
+   Each run becomes a real PDF Highlight annotation (with its own appearance stream), so viewers render it like a
+   highlighter stroke and show the Pangram label + score on hover/click. Pages without rects are untouched. */
 async function highlight(pdfUrl, rects, note, notePage) {
-  const { PDFDocument, rgb, BlendMode, StandardFonts } = PDFLib;
+  const { PDFDocument, PDFName, PDFString, PDFArray, rgb, StandardFonts } = PDFLib;
   const doc = await PDFDocument.load(await fetchPdf(pdfUrl), { ignoreEncryption: true });
-  const pages = doc.getPages();
+  const ctx = doc.context; const pages = doc.getPages();
+  const gsRef = ctx.register(ctx.obj({ Type: 'ExtGState', BM: 'Multiply', CA: 1, ca: 1 }));
+  const f = n => +n.toFixed(2);
   for (let i = 0; i < pages.length; i++) {
     const list = rects[i]; if (!list || !list.length) continue;
     const page = pages[i]; const { height } = page.getSize(); const box = page.getMediaBox();
+    let annots = page.node.lookupMaybe(PDFName.of('Annots'), PDFArray);
+    if (!annots) { annots = ctx.obj([]); page.node.set(PDFName.of('Annots'), annots); }
     for (const q of list) {
       const hue = 120 * (1 - Math.max(0, Math.min(1, q.score))) / 360;
-      const [r, g, b] = hslToRgb(hue, .85, .5);
-      page.drawRectangle({ x: box.x + q.x, y: box.y + height - q.y - q.h, width: q.w, height: q.h, color: rgb(r, g, b), opacity: .38, blendMode: BlendMode.Multiply, borderWidth: 0 });
+      const [r, g, b] = hslToRgb(hue, .9, .62).map(f);
+      const x1 = f(box.x + q.x), y1 = f(box.y + height - q.y - q.h), x2 = f(x1 + q.w), y2 = f(y1 + q.h);
+      const ap = ctx.stream(`/GS gs ${r} ${g} ${b} rg ${x1} ${y1} ${f(x2 - x1)} ${f(y2 - y1)} re f`,
+        { Type: 'XObject', Subtype: 'Form', BBox: [x1, y1, x2, y2], Resources: { ExtGState: { GS: gsRef } } });
+      const text = `${q.label || 'Pangram'}${q.confidence ? ' (' + q.confidence + ' confidence)' : ''} · AI score ${Math.round(q.score * 100)}%`;
+      const annot = ctx.obj({
+        Type: 'Annot', Subtype: 'Highlight', Rect: [x1, y1, x2, y2], QuadPoints: [x1, y2, x2, y2, x1, y1, x2, y1],
+        C: [r, g, b], CA: 1, F: 4, Contents: PDFString.of(text), T: PDFString.of('Pangram AI check'), Subj: PDFString.of('AI check'),
+        AP: { N: ctx.register(ap) },
+      });
+      annots.push(ctx.register(annot));
     }
   }
   if (note && pages[notePage - 1]) {
@@ -67,7 +82,7 @@ async function highlight(pdfUrl, rects, note, notePage) {
     page.drawRectangle({ x: box.x + (width - tw) / 2 - 6, y: box.y + height - 16, width: tw + 12, height: 12, color: rgb(1, 1, 1), opacity: .85, borderWidth: 0 });
     page.drawText(note, { x: box.x + (width - tw) / 2, y: box.y + height - 12.5, size, font, color: rgb(.15, .15, .15) });
   }
-  doc.setSubject('AI check by Overleaf AI Checker (Pangram): green = human, red = AI');
+  doc.setSubject('AI check by Overleaf AI Checker (Pangram): green = human, red = AI. Hover a highlight for its score.');
   const bytes = await doc.save();
   let bin = ''; const u8 = new Uint8Array(bytes);
   for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));

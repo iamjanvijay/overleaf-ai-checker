@@ -41,21 +41,24 @@ async function highlightRange(pdfUrl, from, to, tabId) {
   const h = await sha256(text + '|' + key.slice(-6));
   let scored = cache.get(h);
   if (!scored) { scored = await scoreText(text, key, s => progress(tabId, `Scoring with Pangram… ${s}`)); cache.set(h, scored); }
-  // Word boxes (PDF points, top-left origin) for the selected pages only.
+  // Highlight runs (PDF points, top-left origin) for the selected pages only: consecutive words on the same line
+  // that share a score are merged into one continuous stroke, so the result reads like a highlighter pen.
   const wins = scored.windows.slice().sort((a, b) => a.start - b.start);
   const winAt = pos => { for (const w of wins) if (pos >= w.start && pos < w.end) return w; return null; };
   const rects = [];
   for (let p = from; p <= to; p++) {
-    const page = ex.pages[p - 1]; const list = [];
+    const page = ex.pages[p - 1]; const runs = [];
     for (const it of page.items) {
       const re = /\S+/g; let m;
       while ((m = re.exec(it.str))) {
         const w = winAt(offsets[p] + it.start + m.index); if (!w) continue;
         const x0 = it.x + it.w * (m.index / it.str.length), x1 = it.x + it.w * ((m.index + m[0].length) / it.str.length);
-        list.push({ x: x0, y: it.y - it.h * 0.85, w: x1 - x0, h: it.h * 1.08, score: w.score });
+        const last = runs[runs.length - 1];
+        if (last && last.win === w && Math.abs(last.base - it.y) < it.h * 0.3 && x0 - last.x1 < it.h * 0.9 && x0 >= last.x0) { last.x1 = Math.max(last.x1, x1); last.h = Math.max(last.h, it.h); continue; }
+        runs.push({ x0, x1, base: it.y, h: it.h, win: w });
       }
     }
-    rects[p - 1] = list;
+    rects[p - 1] = runs.map(r => ({ x: r.x0 - 1, y: r.base - r.h * 0.8, w: r.x1 - r.x0 + 2, h: r.h * 1.02, score: r.win.score, label: r.win.label, confidence: r.win.confidence }));
   }
   progress(tabId, 'Writing the highlighted PDF…');
   const note = `Pangram AI check (pages ${from}–${to}): ${Math.round(scored.fraction_ai * 100)}% AI · ${Math.round(scored.fraction_ai_assisted * 100)}% AI-assisted · ${Math.round(scored.fraction_human * 100)}% human. Green = human, yellow = AI-assisted, red = AI.`;
