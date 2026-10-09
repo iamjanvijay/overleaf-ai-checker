@@ -6,7 +6,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.target !== 'offscreen') return;
   const job = msg.type === 'pageCount' ? pageCount(msg.pdfUrl)
             : msg.type === 'extract' ? extract(msg.pdfUrl)
-            : msg.type === 'highlight' ? highlight(msg.pdfUrl, msg.rects, msg.note, msg.notePage)
+            : msg.type === 'highlight' ? highlight(msg.pdfUrl, msg.rects, msg.note, msg.notePage, !!msg.popups)
             : null;
   if (!job) return;
   job.then(sendResponse).catch(e => sendResponse({ error: e.message || String(e) }));
@@ -50,7 +50,7 @@ async function extract(pdfUrl) {
 /* rects: sparse array by page index of [{x, y, w, h, score, label, confidence}] in PDF points (top-left origin).
    Each run becomes a real PDF Highlight annotation (with its own appearance stream), so viewers render it like a
    highlighter stroke and show the Pangram label + score on hover/click. Pages without rects are untouched. */
-async function highlight(pdfUrl, rects, note, notePage) {
+async function highlight(pdfUrl, rects, note, notePage, popups) {
   const { PDFDocument, PDFName, PDFString, PDFArray, rgb, StandardFonts } = PDFLib;
   const doc = await PDFDocument.load(await fetchPdf(pdfUrl), { ignoreEncryption: true });
   const ctx = doc.context; const pages = doc.getPages();
@@ -74,11 +74,11 @@ async function highlight(pdfUrl, rects, note, notePage) {
         AP: { N: ctx.register(ap) },
       });
       const annotRef = ctx.register(annot);
-      // A small, closed Popup gives viewers (Preview, Acrobat, pdf.js) a compact note window instead of their default large one.
-      const popup = ctx.obj({ Type: 'Annot', Subtype: 'Popup', Rect: [x1, f(y2 + 2), f(x1 + 120), f(y2 + 20)], Parent: annotRef, Open: false, F: 28 });
-      const popupRef = ctx.register(popup);
-      annot.set(PDFName.of('Popup'), popupRef);
-      annots.push(annotRef); annots.push(popupRef);
+      annots.push(annotRef);
+      if (popups) {   // optional: Chrome's viewer shows Popup annotations as a fixed 200x200 pt yellow box on hover
+        const popup = ctx.obj({ Type: 'Annot', Subtype: 'Popup', Rect: [x1, f(y2 + 2), f(x1 + 120), f(y2 + 20)], Parent: annotRef, Open: false, F: 28 });
+        const popupRef = ctx.register(popup); annot.set(PDFName.of('Popup'), popupRef); annots.push(popupRef);
+      }
     }
   }
   if (note && pages[notePage - 1]) {

@@ -68,7 +68,8 @@ async function highlightRange(pdfUrl, from, to, tabId) {
   }
   progress(tabId, 'Writing the highlighted PDF…');
   const note = `Pangram AI check (pages ${from}–${to}): ${Math.round(scored.fraction_ai * 100)}% AI · ${Math.round(scored.fraction_ai_assisted * 100)}% AI-assisted · ${Math.round(scored.fraction_human * 100)}% human. Green = human, yellow = AI-assisted, red = AI.`;
-  const out = await offscreen({ type: 'highlight', pdfUrl, rects, note, notePage: from });
+  const { chromePopups } = await chrome.storage.sync.get('chromePopups');
+  const out = await offscreen({ type: 'highlight', pdfUrl, rects, note, notePage: from, popups: !!chromePopups });
   return { base64: out.base64, from, to, summary: scored };
 }
 

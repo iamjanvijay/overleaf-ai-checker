@@ -5,3 +5,6 @@ document.getElementById('save').onclick = async () => {
   await chrome.storage.sync.set({ pangramKey: v });
   status.textContent = v ? 'Key saved ✓' : 'Key removed.'; status.className = v ? 'ok' : '';
 };
+const cp = document.getElementById('chromePopups');
+chrome.storage.sync.get('chromePopups').then(({ chromePopups }) => { cp.checked = !!chromePopups; });
+cp.onchange = () => chrome.storage.sync.set({ chromePopups: cp.checked });
