@@ -15,3 +15,12 @@
 #oac-panel .oac-status { margin-top: 8px; font-size: 12px; color: #9aa5b5; min-height: 16px; white-space: normal; }
 #oac-panel .oac-status.ok { color: #7fe06f; }
 #oac-panel .oac-status.err { color: #ff8080; }
+#oac-panel .oac-done { color: #7fe06f; font-weight: 700; margin-bottom: 6px; }
+#oac-panel .oac-stack { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: #2c3645; }
+#oac-panel .oac-seg { display: block; height: 100%; }
+#oac-panel .oac-seg-h { background: hsl(120,70%,50%); } #oac-panel .oac-seg-a { background: hsl(55,90%,55%); } #oac-panel .oac-seg-ai { background: hsl(0,80%,58%); }
+#oac-panel .oac-nums { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 12px; color: #c9d1dc; }
+#oac-panel .oac-nums b { font-size: 14px; color: #fff; }
+#oac-panel .oac-h b { color: hsl(120,70%,65%); } #oac-panel .oac-a b { color: hsl(55,90%,65%); } #oac-panel .oac-ai b { color: hsl(0,80%,70%); }
+#oac-panel .oac-meta { margin-top: 6px; font-size: 11px; color: #9aa5b5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#oac-panel .oac-file { color: #c9d1dc; }

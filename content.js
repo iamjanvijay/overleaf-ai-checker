@@ -44,6 +44,20 @@
     } catch (e) { /* ignore */ }
   }
   function status(text, cls = '') { const s = $('#oac-status'); if (s) { s.textContent = text; s.className = 'oac-status ' + cls; } }
+  function showResult(res, name) {
+    const s = $('#oac-status'); if (!s) return;
+    const r = res.summary; const pct = v => Math.round(v * 100);
+    const human = pct(r.fraction_human), assisted = pct(r.fraction_ai_assisted), ai = Math.max(0, 100 - human - assisted);
+    const esc = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    s.className = 'oac-status';
+    s.innerHTML = `
+      <div class="oac-done">✓ Highlighted PDF downloaded</div>
+      <div class="oac-stack" title="${human}% human · ${assisted}% AI-assisted · ${ai}% AI">
+        <span class="oac-seg oac-seg-h" style="width:${human}%"></span><span class="oac-seg oac-seg-a" style="width:${assisted}%"></span><span class="oac-seg oac-seg-ai" style="width:${ai}%"></span>
+      </div>
+      <div class="oac-nums"><span class="oac-h"><b>${human}%</b> human</span><span class="oac-a"><b>${assisted}%</b> AI-assisted</span><span class="oac-ai"><b>${ai}%</b> AI</span></div>
+      <div class="oac-meta">Pages ${res.from}–${res.to} · ${r.words.toLocaleString()} words · <span class="oac-file" title="${esc(name)}">${esc(name)}</span></div>`;
+  }
   function setBusy(b) { S.busy = b; const go = $('#oac-go'); if (go) { go.disabled = b; go.textContent = b ? 'Working…' : '⬇ Download highlighted PDF'; } }
 
   /* ---------- compile and wait for the fresh PDF ---------- */
@@ -79,8 +93,7 @@
       const name = (document.title.split(' - ')[0] || 'document').replace(/[^\w.-]+/g, '_') + `-ai-check-p${res.from}-${res.to}.pdf`;
       const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60000);
-      const s = res.summary;
-      status(`Done · pages ${res.from}–${res.to}: ${Math.round(s.fraction_ai * 100)}% AI · ${Math.round(s.fraction_ai_assisted * 100)}% AI-assisted · ${Math.round(s.fraction_human * 100)}% human (${s.words} words)`, 'ok');
+      showResult(res, name);
     } catch (e) { status('Error: ' + (e.message || e), 'err'); }
     setBusy(false);
   }
