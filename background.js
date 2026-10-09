@@ -58,7 +58,7 @@ async function highlightRange(pdfUrl, from, to, tabId) {
         runs.push({ x0, x1, base: it.y, h: it.h, win: w });
       }
     }
-    rects[p - 1] = runs.map(r => ({ x: r.x0 - 1, y: r.base - r.h * 0.8, w: r.x1 - r.x0 + 2, h: r.h * 1.02, score: r.win.score, label: r.win.label, confidence: r.win.confidence }));
+    rects[p - 1] = runs.map(r => ({ x: r.x0 - 0.5, y: r.base - r.h * 0.74, w: r.x1 - r.x0 + 1, h: r.h * 0.92, score: r.win.score, label: r.win.label, confidence: r.win.confidence }));
   }
   progress(tabId, 'Writing the highlighted PDF…');
   const note = `Pangram AI check (pages ${from}–${to}): ${Math.round(scored.fraction_ai * 100)}% AI · ${Math.round(scored.fraction_ai_assisted * 100)}% AI-assisted · ${Math.round(scored.fraction_human * 100)}% human. Green = human, yellow = AI-assisted, red = AI.`;

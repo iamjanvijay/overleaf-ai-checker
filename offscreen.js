@@ -54,7 +54,7 @@ async function highlight(pdfUrl, rects, note, notePage) {
   const { PDFDocument, PDFName, PDFString, PDFArray, rgb, StandardFonts } = PDFLib;
   const doc = await PDFDocument.load(await fetchPdf(pdfUrl), { ignoreEncryption: true });
   const ctx = doc.context; const pages = doc.getPages();
-  const gsRef = ctx.register(ctx.obj({ Type: 'ExtGState', BM: 'Multiply', CA: 1, ca: 1 }));
+  const gsRef = ctx.register(ctx.obj({ Type: 'ExtGState', BM: 'Multiply', CA: .55, ca: .55 }));
   const f = n => +n.toFixed(2);
   for (let i = 0; i < pages.length; i++) {
     const list = rects[i]; if (!list || !list.length) continue;
@@ -63,14 +63,14 @@ async function highlight(pdfUrl, rects, note, notePage) {
     if (!annots) { annots = ctx.obj([]); page.node.set(PDFName.of('Annots'), annots); }
     for (const q of list) {
       const hue = 120 * (1 - Math.max(0, Math.min(1, q.score))) / 360;
-      const [r, g, b] = hslToRgb(hue, .9, .62).map(f);
+      const [r, g, b] = hslToRgb(hue, .95, .78).map(f);   // pastel highlighter tint
       const x1 = f(box.x + q.x), y1 = f(box.y + height - q.y - q.h), x2 = f(x1 + q.w), y2 = f(y1 + q.h);
       const ap = ctx.stream(`/GS gs ${r} ${g} ${b} rg ${x1} ${y1} ${f(x2 - x1)} ${f(y2 - y1)} re f`,
         { Type: 'XObject', Subtype: 'Form', BBox: [x1, y1, x2, y2], Resources: { ExtGState: { GS: gsRef } } });
       const text = `${q.label || 'Pangram'}${q.confidence ? ' (' + q.confidence + ' confidence)' : ''} · AI score ${Math.round(q.score * 100)}%`;
       const annot = ctx.obj({
         Type: 'Annot', Subtype: 'Highlight', Rect: [x1, y1, x2, y2], QuadPoints: [x1, y2, x2, y2, x1, y1, x2, y1],
-        C: [r, g, b], CA: 1, F: 4, Contents: PDFString.of(text), T: PDFString.of('Pangram AI check'), Subj: PDFString.of('AI check'),
+        C: [r, g, b], CA: .55, F: 4, Contents: PDFString.of(text), T: PDFString.of('Pangram AI check'), Subj: PDFString.of('AI check'),
         AP: { N: ctx.register(ap) },
       });
       annots.push(ctx.register(annot));
