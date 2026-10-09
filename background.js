@@ -41,24 +41,30 @@ async function highlightRange(pdfUrl, from, to, tabId) {
   const h = await sha256(text + '|' + key.slice(-6));
   let scored = cache.get(h);
   if (!scored) { scored = await scoreText(text, key, s => progress(tabId, `Scoring with Pangram… ${s}`)); cache.set(h, scored); }
-  // Highlight runs (PDF points, top-left origin) for the selected pages only: consecutive words on the same line
-  // that share a score are merged into one continuous stroke, so the result reads like a highlighter pen.
+  // One highlight per word (PDF points, top-left origin) for the selected pages only. Consecutive words on the
+  // same line with the same score are tiled edge-to-edge so the stroke looks continuous, but each word keeps its
+  // own annotation (hover shows the word and its Pangram score).
   const wins = scored.windows.slice().sort((a, b) => a.start - b.start);
   const winAt = pos => { for (const w of wins) if (pos >= w.start && pos < w.end) return w; return null; };
   const rects = [];
   for (let p = from; p <= to; p++) {
-    const page = ex.pages[p - 1]; const runs = [];
+    const page = ex.pages[p - 1]; const words = [];
     for (const it of page.items) {
       const re = /\S+/g; let m;
       while ((m = re.exec(it.str))) {
         const w = winAt(offsets[p] + it.start + m.index); if (!w) continue;
         const x0 = it.x + it.w * (m.index / it.str.length), x1 = it.x + it.w * ((m.index + m[0].length) / it.str.length);
-        const last = runs[runs.length - 1];
-        if (last && last.win === w && Math.abs(last.base - it.y) < it.h * 0.3 && x0 - last.x1 < it.h * 0.9 && x0 >= last.x0) { last.x1 = Math.max(last.x1, x1); last.h = Math.max(last.h, it.h); continue; }
-        runs.push({ x0, x1, base: it.y, h: it.h, win: w });
+        words.push({ word: m[0], x0, x1, base: it.y, h: it.h, win: w });
       }
     }
-    rects[p - 1] = runs.map(r => ({ x: r.x0 - 0.5, y: r.base - r.h * 0.74, w: r.x1 - r.x0 + 1, h: r.h * 0.92, score: r.win.score, label: r.win.label, confidence: r.win.confidence }));
+    for (let k = 0; k < words.length; k++) {
+      const a = words[k], b = words[k + 1];
+      const sameLine = b && b.win === a.win && Math.abs(b.base - a.base) < a.h * 0.3 && b.x0 - a.x1 < a.h * 0.9 && b.x0 >= a.x0;
+      a.x1e = sameLine ? b.x0 : a.x1 + 0.5;                     // extend to the next word so the stroke is continuous
+      const prev = words[k - 1];
+      a.x0e = prev && prev.x1e === a.x0 ? a.x0 : a.x0 - 0.5;
+    }
+    rects[p - 1] = words.map(q => ({ x: q.x0e, y: q.base - q.h * 0.74, w: q.x1e - q.x0e, h: q.h * 0.92, score: q.win.score, label: q.win.label, confidence: q.win.confidence, word: q.word }));
   }
   progress(tabId, 'Writing the highlighted PDF…');
   const note = `Pangram AI check (pages ${from}–${to}): ${Math.round(scored.fraction_ai * 100)}% AI · ${Math.round(scored.fraction_ai_assisted * 100)}% AI-assisted · ${Math.round(scored.fraction_human * 100)}% human. Green = human, yellow = AI-assisted, red = AI.`;
