@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Overleaf AI Checker",
+  "version": "1.0.0",
+  "description": "Adds an AI-check button to Overleaf's PDF viewer: the compiled PDF's text is scored with Pangram and every word is highlighted on a green (human) to red (AI) scale.",
+  "permissions": ["storage", "offscreen"],
+  "host_permissions": ["https://www.overleaf.com/*", "https://text.external-api.pangram.com/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [{
+    "matches": ["https://www.overleaf.com/project/*"],
+    "js": ["content.js"],
+    "css": ["content.css"],
+    "run_at": "document_idle"
+  }],
+  "action": { "default_popup": "popup.html", "default_title": "Overleaf AI Checker",
+              "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" } },
+  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+}

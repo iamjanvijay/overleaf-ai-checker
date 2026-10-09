@@ -1,0 +1,17 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body { width: 320px; font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 14px; background: #1b222c; color: #e8ecf1; }
+h1 { font-size: 15px; margin: 0 0 10px; } label { display: block; font-weight: 700; margin-bottom: 6px; }
+input { width: 100%; box-sizing: border-box; padding: 7px 8px; border-radius: 4px; border: 1px solid #3b4556; background: #232a35; color: #e8ecf1; font: inherit; }
+button { margin-top: 10px; background: #138a07; color: #fff; border: 0; border-radius: 4px; padding: 7px 14px; font-weight: 700; cursor: pointer; }
+p { color: #9aa5b5; margin: 10px 0 0; } .ok { color: #7fe06f; } a { color: #7fe06f; }
+.legend { display: flex; align-items: center; gap: 6px; margin-top: 12px; } .bar { flex: 1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, hsl(120,80%,45%), hsl(60,90%,50%), hsl(0,85%,50%)); }
+</style></head><body>
+<h1>🤖 Overleaf AI Checker</h1>
+<label for="key">Pangram API key</label>
+<input id="key" type="password" placeholder="sk-pg-…" autocomplete="off">
+<button id="save">Save</button>
+<label style="margin-top:14px;font-weight:400"><input type="checkbox" id="auto" checked> Automatically re-check after each compile (unchanged text keeps its scores)</label>
+<p id="status"></p>
+<div class="legend"><span>human</span><span class="bar"></span><span>AI</span></div>
+<p>Open any Overleaf project, compile, then click <b>🤖 AI check</b> in the PDF toolbar. Your key is stored in Chrome's extension storage and sent only to Pangram.</p>
+<script src="popup.js"></script></body></html>
