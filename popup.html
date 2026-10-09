@@ -12,6 +12,6 @@ p { color: #9aa5b5; margin: 10px 0 0; } .ok { color: #7fe06f; }
 <button id="save">Save</button>
 <label style="margin-top:14px;font-weight:400;display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="chromePopups" style="width:auto;margin-top:3px"> <span>Also add hover popups for Chrome's PDF viewer <small style="color:#9aa5b5">(Chrome draws them as a large yellow note; Preview, Acrobat and Firefox show per-word scores without this)</small></span></label>
 <p id="status"></p>
-<div class="legend"><span>human</span><span class="bar"></span><span>AI</span></div>
+<div class="legend"><span style="display:inline-block;width:14px;height:10px;border-radius:2px;background:hsl(120,70%,55%)"></span> human &nbsp;<span style="display:inline-block;width:14px;height:10px;border-radius:2px;background:hsl(55,90%,58%)"></span> AI-assisted &nbsp;<span style="display:inline-block;width:14px;height:10px;border-radius:2px;background:hsl(0,80%,62%)"></span> AI</div>
 <p>In any Overleaf project, click <b>🤖 AI check</b> in the PDF toolbar, choose the pages, and download the highlighted PDF. Your key is stored in Chrome's extension storage and sent only to Pangram.</p>
 <script src="popup.js"></script></body></html>

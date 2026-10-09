@@ -29,7 +29,7 @@
       <div class="oac-head"><span>🤖 AI check (Pangram)</span><button class="oac-x" data-act="close" title="Close">✕</button></div>
       <label class="oac-row"><input type="checkbox" id="oac-compile" checked> Recompile first</label>
       <div class="oac-row">Pages <input id="oac-from" type="number" min="1" value="1"> to <input id="oac-to" type="number" min="1" value="1"> <span id="oac-total" class="oac-muted"></span></div>
-      <div class="oac-legend"><span>human</span><span class="oac-bar"></span><span>AI</span></div>
+      <div class="oac-legend"><span class="oac-sw oac-sw-h"></span>human <span class="oac-sw oac-sw-a"></span>AI-assisted <span class="oac-sw oac-sw-ai"></span>AI</div>
       <button class="oac-go" id="oac-go" data-act="go">⬇ Download highlighted PDF</button>
       <div id="oac-status" class="oac-status"></div>`;
     host.appendChild(el);

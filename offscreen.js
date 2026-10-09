@@ -110,7 +110,9 @@ async function highlight(pdfUrl, rects, note, notePage, popups) {
       const x1 = f(box.x + q.x), y1 = f(box.y + height - q.y - q.h), x2 = f(x1 + q.w), y2 = f(y1 + q.h);
       const ap = ctx.stream(`/GS gs ${r} ${g} ${b} rg ${x1} ${y1} ${f(x2 - x1)} ${f(y2 - y1)} re f`,
         { Type: 'XObject', Subtype: 'Form', BBox: [x1, y1, x2, y2], Resources: { ExtGState: { GS: gsRef } } });
-      const text = `${q.word ? q.word + ': ' : ''}${Math.round(q.score * 100)}% AI`.replace(/[^\x20-\x7e]/g, '?');   // short, ASCII-only (viewers show it as a tooltip)
+      const conf = q.confidence ? ` (${String(q.confidence).toLowerCase()} confidence)` : '';
+      const detail = q.label === 'AI-assisted' && q.assist ? ` ${Math.round(q.assist * 100)}% assisted` : '';
+      const text = `${q.word ? q.word + ': ' : ''}${q.label}${detail}${conf}`.replace(/[^\x20-\x7e]/g, '?');   // e.g. "transcript: AI (high confidence)"
       const annot = ctx.obj({
         Type: 'Annot', Subtype: 'Highlight', Rect: [x1, y1, x2, y2], QuadPoints: [x1, y2, x2, y2, x1, y1, x2, y1],
         C: [r, g, b], CA: .55, F: 4, Contents: PDFString.of(text),
@@ -130,7 +132,7 @@ async function highlight(pdfUrl, rects, note, notePage, popups) {
     page.drawRectangle({ x: box.x + (width - tw) / 2 - 6, y: box.y + height - 16, width: tw + 12, height: 12, color: rgb(1, 1, 1), opacity: .85, borderWidth: 0 });
     page.drawText(note, { x: box.x + (width - tw) / 2, y: box.y + height - 12.5, size, font, color: rgb(.15, .15, .15) });
   }
-  doc.setSubject('AI check by Overleaf AI Checker (Pangram): green = human, red = AI. Hover a highlight for its score.');
+  doc.setSubject('AI check by Overleaf AI Checker (Pangram): green = human, yellow = AI-assisted, red = AI.');
   const bytes = await doc.save();
   let bin = ''; const u8 = new Uint8Array(bytes);
   for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));

@@ -7,7 +7,10 @@
 #oac-panel .oac-row { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
 #oac-panel input[type=number] { width: 56px; padding: 3px 6px; border-radius: 4px; border: 1px solid #3b4556; background: #232a35; color: #e8ecf1; font: inherit; }
 #oac-panel .oac-muted { color: #9aa5b5; }
-#oac-panel .oac-legend { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #9aa5b5; margin: 8px 0; }
+#oac-panel .oac-legend { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #c9d1dc; margin: 8px 0; }
+#oac-panel .oac-sw { display: inline-block; width: 14px; height: 10px; border-radius: 2px; margin-left: 6px; }
+#oac-panel .oac-sw:first-child { margin-left: 0; }
+#oac-panel .oac-sw-h { background: hsl(120,70%,55%); } #oac-panel .oac-sw-a { background: hsl(55,90%,58%); } #oac-panel .oac-sw-ai { background: hsl(0,80%,62%); }
 #oac-panel .oac-bar { flex: 1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, hsl(120,80%,45%), hsl(60,90%,50%), hsl(0,85%,50%)); }
 #oac-panel .oac-go { width: 100%; background: #138a07; color: #fff; border: 0; border-radius: 4px; padding: 7px 10px; font-weight: 700; cursor: pointer; }
 #oac-panel .oac-go:hover { background: #0f6b05; }

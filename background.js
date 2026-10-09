@@ -64,10 +64,10 @@ async function highlightRange(pdfUrl, from, to, tabId) {
       const prev = words[k - 1];
       a.x0e = prev && prev.x1e === a.x0 ? a.x0 : a.x0 - 0.5;
     }
-    rects[p - 1] = words.map(q => ({ x: q.x0e, y: q.base - q.h * 0.74, w: q.x1e - q.x0e, h: q.h * 0.92, score: q.win.score, label: q.win.label, confidence: q.win.confidence, word: q.word }));
+    rects[p - 1] = words.map(q => ({ x: q.x0e, y: q.base - q.h * 0.74, w: q.x1e - q.x0e, h: q.h * 0.92, score: q.win.score, label: q.win.label, confidence: q.win.confidence, assist: q.win.assist, word: q.word }));
   }
   progress(tabId, 'Writing the highlighted PDF…');
-  const note = `Pangram AI check (pages ${from}–${to}): ${Math.round(scored.fraction_ai * 100)}% AI · ${Math.round(scored.fraction_ai_assisted * 100)}% AI-assisted · ${Math.round(scored.fraction_human * 100)}% human. Green = human, yellow = AI-assisted, red = AI.`;
+  const note = `Pangram AI check, pages ${from}-${to}: ${Math.round(scored.fraction_human * 100)}% human (green), ${Math.round(scored.fraction_ai_assisted * 100)}% AI-assisted (yellow), ${Math.round(scored.fraction_ai * 100)}% AI (red).`;
   const { chromePopups } = await chrome.storage.sync.get('chromePopups');
   const out = await offscreen({ type: 'highlight', pdfUrl, rects, note, notePage: from, popups: !!chromePopups });
   return { base64: out.base64, from, to, summary: scored };
@@ -87,7 +87,7 @@ function sentenceSmooth(text, windows) {
     if (!best) continue;
     const last = out[out.length - 1];
     if (last && last.src === best && last.end >= st.start - 2) last.end = st.end;
-    else out.push({ start: st.start, end: st.end, label: best.label, confidence: best.confidence, score: best.score, src: best });
+    else out.push({ start: st.start, end: st.end, label: best.label, confidence: best.confidence, score: best.score, assist: best.assist, src: best });
   }
   return out.map(({ src, ...w }) => w);
 }
@@ -135,14 +135,12 @@ async function scoreText(text, key, onProgress) {
       let s0 = w.start_index || 0, s1 = w.end_index || 0;
       const wt = (w.text || '').trim();
       if (wt.length >= 20) { const probe = wt.slice(0, 60); let i = chunk.indexOf(probe, cursor); if (i < 0) i = chunk.indexOf(probe); if (i >= 0) { s0 = i; const j = chunk.indexOf(wt.slice(-40), i); s1 = j >= 0 ? j + wt.slice(-40).length : i + wt.length; cursor = s1; } }
+      // Three plain classes, straight from Pangram's label: human = green (0), AI-assisted = yellow (0.5), AI = red (1).
       const label = (w.label || '').toLowerCase();
-      const conf = { high: 1, medium: .75, low: .5 }[(w.confidence || '').toLowerCase()] ?? .75;
-      const assist = +w.ai_assistance_score || 0;
-      let score;
-      if (label.includes('human') && !label.replace('humanized', '').includes('ai')) score = Math.min(.35, assist);
-      else if (label.includes('assist') || label.includes('mixed')) score = .45 + .25 * assist;
-      else score = .7 + .3 * conf;
-      windows.push({ start: offset + s0, end: offset + s1, label: w.label, confidence: w.confidence, score: +score.toFixed(3) });
+      const kind = (label.includes('human') && !label.replace('humanized', '').includes('ai')) ? 'Human'
+                 : (label.includes('assist') || label.includes('mixed')) ? 'AI-assisted' : 'AI';
+      const score = kind === 'Human' ? 0 : kind === 'AI-assisted' ? 0.5 : 1;
+      windows.push({ start: offset + s0, end: offset + s1, label: kind, confidence: w.confidence, score, assist: +w.ai_assistance_score || 0 });
     }
   }
   const n = Math.max(1, tot.words);

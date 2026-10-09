@@ -7,8 +7,8 @@ Adds a **🤖 AI check** button to Overleaf's PDF toolbar. It does one thing:
 1. (Optionally) recompiles the project and waits for the fresh PDF.
 2. You choose a page range (e.g. 1 to 10).
 3. The text of those pages is scored with [Pangram](https://www.pangram.com) using your own API key.
-4. A copy of the PDF is downloaded with the text on those pages highlighted on a green (human) → yellow
-   (AI-assisted) → red (AI) scale. Highlights are real PDF annotations: hover or click one in Preview, Acrobat or
+4. A copy of the PDF is downloaded with the text on those pages highlighted in three plain colors straight from Pangram's labels:
+   green = human, yellow = AI-assisted, red = AI. Highlights are real PDF annotations: hover or click one in Preview, Acrobat or
    most viewers to see the Pangram label, confidence and AI score. Pages outside the range are left untouched.
    A one-line summary is stamped at the top of the first selected page.
 
