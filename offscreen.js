@@ -67,10 +67,10 @@ async function highlight(pdfUrl, rects, note, notePage) {
       const x1 = f(box.x + q.x), y1 = f(box.y + height - q.y - q.h), x2 = f(x1 + q.w), y2 = f(y1 + q.h);
       const ap = ctx.stream(`/GS gs ${r} ${g} ${b} rg ${x1} ${y1} ${f(x2 - x1)} ${f(y2 - y1)} re f`,
         { Type: 'XObject', Subtype: 'Form', BBox: [x1, y1, x2, y2], Resources: { ExtGState: { GS: gsRef } } });
-      const text = `${q.word ? '\u201c' + q.word + '\u201d \u2014 ' : ''}${Math.round(q.score * 100)}% AI (${q.label || 'Pangram'}${q.confidence ? ', ' + q.confidence.toLowerCase() + ' confidence' : ''})`;
+      const text = `${q.word ? q.word + ': ' : ''}${Math.round(q.score * 100)}% AI`.replace(/[^\x20-\x7e]/g, '?');   // short, ASCII-only (viewers show it as a tooltip)
       const annot = ctx.obj({
         Type: 'Annot', Subtype: 'Highlight', Rect: [x1, y1, x2, y2], QuadPoints: [x1, y2, x2, y2, x1, y1, x2, y1],
-        C: [r, g, b], CA: .55, F: 4, Contents: PDFString.of(text), T: PDFString.of('Pangram AI check'), Subj: PDFString.of('AI check'),
+        C: [r, g, b], CA: .55, F: 4, Contents: PDFString.of(text),
         AP: { N: ctx.register(ap) },
       });
       annots.push(ctx.register(annot));
